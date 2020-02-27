@@ -1,0 +1,42 @@
+<resources>
+    <string name="app_name">WatchBleTest</string>
+    <string name="device_list_title">手表列表</string>
+    <string name="start_test">开始测试</string>
+    <string name="start_test_again">继续测试</string>
+    <string name="active_code">LPA:1$ggckoem.prod.ondemandconnectivity.com$C3681EB338D7A1C4EF611106839E070CB4EFBC30835545BCE81247D9F148461D</string>
+    <string name="tip_empty">手表列表为空，请确保手表在ESIM测试界面，然后点击刷新按钮</string>
+
+    <string name="tip_start">手表进入esim测试界面后，点击开始测试按钮</string>
+    <string name="tip_enable">请点击要测试的手表IMEI号，如果下面列表为空，请点击刷新按钮</string>
+    <string name="tip_progress">正在测试</string>
+    <string name="tip_enable_success">1.正在测试，手表会重启，等待手表重启完成后，查看是否成功识卡，如果成功识卡，保持手表在esim测试界面，点击再次测试按钮</string>
+    <string name="tip_disable_success">2.正在测试，手表会重启，等待手表重启完成后，保持手表在esim测试界面，点击再次测试按钮</string>
+    <string name="tip_test_success">测试成功，该手表esim功能正常</string>
+
+    <string name="error_ble">"蓝牙连接失败，请确保手表已开机且处于eism测试界面"</string>
+    <string name="error_install">profile 安装失败</string>
+    <string name="installing">正在开卡中,请稍等2–3分钟,切勿离开此界面</string>
+    <string name="ble_list_null">未发现eSIM设备，请确保手表在eSIM测试界面，然后点击刷新按钮</string>
+    <string name="ble_prepare">正在准备中，请稍后…</string>
+    <string name="ble_enable">打开profile中....，手表即将重启</string>
+    <string name="ble_delete">删除profile中，请稍后....</string>
+    <string name="ble_disable">关闭profile中…，手表即将重启</string>
+    <string name="get_eid_timeout">获取eSIM失败，请尝试重新打开手表eSIM测试界面</string>
+    <string name="get_profile_list_timeout">获取profile失败，请确保手表处于eSIM测试界面</string>
+    <string name="ensure">确定</string>
+    <string name="get_profile_list">获取profile list中…</string>
+    <string name="get_eid">获取eid中…</string>
+    <string name="error_tip">错误</string>
+    <string name="error_detail_1">网络异常，请检查网络</string>
+    <string name="error_detail_2">profile与芯片不适配，请使用正确的profile</string>
+    <string name="error_detail_3">profile已经被另外的设备绑定过，请尝试去解绑或者使用其他的profile</string>
+    <string name="error_detail_4">蓝牙传输异常，请尝试重启手表</string>
+    <string name="permission_denied">权限没有被允许</string>
+    <string name="ble_search_doing">正在搜索设备</string>
+    <string name="ble_search_start">开始搜索</string>
+    <string name="ble_search_end">搜索完成</string>
+    <string name="ble_connect_success">连接成功</string>
+    <string name="ble_connect_start">开始连接</string>
+    <string name="ble_connect_failed">连接失败</string>
+    <string name="ble_disconnect">与设备失去连接</string>
+</resources>
