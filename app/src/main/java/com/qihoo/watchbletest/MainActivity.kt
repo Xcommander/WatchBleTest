@@ -3,18 +3,36 @@ package com.qihoo.watchbletest
 import android.bluetooth.BluetoothGatt
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import com.clj.fastble.data.BleDevice
 import com.clj.fastble.exception.BleException
+import com.google.gson.JsonObject
 import kotlinx.android.synthetic.main.activity_main.*
+import okhttp3.MediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody
+import java.util.concurrent.*
+
 
 class MainActivity : AppCompatActivity() {
 
 
     var watchList: MutableList<BleDevice>? = null
+    private val okHttpClient: OkHttpClient = OkHttpClient()
+    private val mSingleThreadPool: ExecutorService = ThreadPoolExecutor(
+        1,
+        1,
+        0L,
+        TimeUnit.MILLISECONDS,
+        LinkedBlockingQueue<Runnable>(1024),
+        Executors.defaultThreadFactory(),
+        ThreadPoolExecutor.AbortPolicy()
+    )
+
     /**
      * 0开始状态
      * 1表示扫描完成
@@ -71,6 +89,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        ble_network.setOnClickListener { postRequest() }
     }
 
     private fun initData() {
@@ -222,9 +241,45 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    private fun postRequest() {
+        val jsonObject = JsonObject()
+        jsonObject.addProperty("str", "123")
+        val body: RequestBody = RequestBody.create(MEDIA_TYPE_MARKDOWN, jsonObject.toString())
+        val request = Request.Builder()
+            .url("http://devapp.artimen.cn:8001/Service/LogService.asmx/uploadStr")
+            .post(body)
+            .build()
+        mSingleThreadPool.execute {
+            try {
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        Log.e("xulinchao", "successful")
+                    } else {
+                        Log.e("xulinchao", "failed")
+                    }
+
+                }
+            } catch (e: Exception) {
+                Log.e("xulinchao",e.printStackTrace().toString())
+            }
+        }
+
+    }
+
+    companion object {
+        val MEDIA_TYPE_MARKDOWN = MediaType.parse("application/json; charset=utf-8");
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        mSingleThreadPool.shutdown()
+    }
+
     fun reset() {
         ble_tip.text = "开始测试"
         ble_operation.text = "扫描"
         status = 0
     }
 }
+
+
