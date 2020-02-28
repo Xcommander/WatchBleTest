@@ -4,7 +4,9 @@ import android.bluetooth.BluetoothGatt
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.util.Log
+import android.view.WindowManager
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.clj.fastble.data.BleDevice
@@ -15,14 +17,32 @@ import okhttp3.MediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
+import java.lang.StringBuilder
 import java.util.concurrent.*
 
 
 class MainActivity : AppCompatActivity() {
-
-
+    var isWriteSuccess = true
+    var handler: Handler = Handler(Handler.Callback {
+        if (it.what == 1) {
+            postRequest()
+        }
+        when (it.what) {
+            1 -> postRequest()
+            2 -> {
+                //25s后,发送开始指令
+                if (isWriteSuccess) {
+                    BleFastManager.write(byteArrayOf(1))
+                    sendWrite()
+                }
+            }
+        }
+        false
+    })
     var watchList: MutableList<BleDevice>? = null
     private val okHttpClient: OkHttpClient = OkHttpClient()
+    private var stringBuilder: StringBuilder = StringBuilder()
+    private var isFirstConnect = true
     private val mSingleThreadPool: ExecutorService = ThreadPoolExecutor(
         1,
         1,
@@ -43,6 +63,8 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+//        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        //发生断连问题,这个还不清楚，是否需要断连策略
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             if (checkCallingPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
                 init()
@@ -58,6 +80,13 @@ class MainActivity : AppCompatActivity() {
     fun init() {
         initView()
         initData()
+    }
+    private fun disconnect(){
+        BleFastManager.gatt?.disconnect()
+        BleFastManager.gatt?.close()
+    }
+    private fun sendWrite() {
+        handler.sendEmptyMessageDelayed(2, 25 * 1000)
     }
 
     override fun onRequestPermissionsResult(
@@ -77,10 +106,11 @@ class MainActivity : AppCompatActivity() {
     private fun initView() {
         ble_operation.setOnClickListener {
             when (status) {
-                0 -> BleFastManager.scan()
+                0 -> {
+                    BleFastManager.scan()
+                }
                 1 -> {
-                    BleFastManager.bleDevice = watchList?.get(0)
-                    BleFastManager.connect()
+                    connectDevice()
                 }
                 2 -> {
                     //发送停止指令
@@ -90,6 +120,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         ble_network.setOnClickListener { postRequest() }
+    }
+
+    fun connectDevice() {
+        BleFastManager.bleDevice = watchList?.get(0)
+        BleFastManager.connect()
     }
 
     private fun initData() {
@@ -102,9 +137,7 @@ class MainActivity : AppCompatActivity() {
      */
     private fun initBle() {
         BleFastManager.initBle(application)
-
         BleFastManager.mBleScanListener = object : BleFastManager.BleScanListener {
-
             override fun onScaning(bleDevice: BleDevice?) {
                 Toast.makeText(
                     this@MainActivity,
@@ -136,6 +169,9 @@ class MainActivity : AppCompatActivity() {
                     status = 1
                     ble_tip.text = "寻找到蓝牙设备,请点击开始进行连接和数据传输"
                     ble_operation.text = "开始"
+                    if (!isWriteSuccess) {
+                        connectDevice()
+                    }
 
                 }
 
@@ -146,18 +182,22 @@ class MainActivity : AppCompatActivity() {
             object : BleFastManager.BleNotifyListener {
                 override fun onCharacteristicChanged(data: ByteArray) {
                     //接收数据
-                    Log.e("xulinchao", "onCharacteristicChanged")
+                    //Log.d("xulinchao","$data")
+                    //stringBuilder.append(data)
 
                 }
 
                 override fun onNotifySuccess() {
                     //通知成功后，开始发送指令,比如开始和停止指令
                     Log.e("xulinchao", "onNotifySuccess")
-                    status = 2
-                    ble_tip.text = "开始传输数据"
-                    ble_operation.text = "停止"
+                    if (isFirstConnect) {
+                        //handler.sendEmptyMessageDelayed(1, POST_TIME)
+                        status = 2
+                        ble_tip.text = "开始传输数据"
+                        ble_operation.text = "停止"
+                    }
                     BleFastManager.write(byteArrayOf(1))
-
+                    handler.sendEmptyMessageDelayed(2, 25 * 1000)
                 }
 
                 override fun onNotifyFailure(exception: BleException?) {
@@ -168,12 +208,18 @@ class MainActivity : AppCompatActivity() {
                 override fun writeSuccess(current: Int, total: Int, justWrite: ByteArray) {
                     //这边检测是否写入成功，成功后，起alarm定时10min，给服务器发送数据
                     Log.e("xulinchao", "writeSuccess")
+                    isWriteSuccess = true
 
                 }
 
                 override fun writeFailed(exception: BleException?) {
                     //写入失败后，停止发送数据
                     Log.e("xulinchao", "writeFailed")
+                    isWriteSuccess = false
+                    //3s后再去连接
+                    BleFastManager.gatt?.disconnect()
+                    BleFastManager.gatt?.close()
+                    handler.postDelayed({ BleFastManager.scan() }, 3 * 1000)
                 }
 
             }
@@ -215,6 +261,7 @@ class MainActivity : AppCompatActivity() {
 
                 override fun onConnectFail(bleDevice: BleDevice?, exception: BleException?) {
                     Log.e("MainActivity", "onConnectFail")
+
                     Toast.makeText(
                         this@MainActivity,
                         getString(R.string.ble_connect_failed),
@@ -228,13 +275,11 @@ class MainActivity : AppCompatActivity() {
                     status: Int,
                     newState: Int
                 ) {
+                    Log.e("xulinchao", "发生了变化")
                     if (newState == 0) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            getString(R.string.ble_connect_failed),
-                            Toast.LENGTH_SHORT
-                        ).show()
-                        reset()
+                        isFirstConnect = false
+                        Log.e("xulinchao", "发生了断连,开始自动连接")
+                        connectDevice()
                     }
                 }
 
@@ -243,7 +288,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun postRequest() {
         val jsonObject = JsonObject()
-        jsonObject.addProperty("str", "123")
+        jsonObject.addProperty("str", stringBuilder.toString())
         val body: RequestBody = RequestBody.create(MEDIA_TYPE_MARKDOWN, jsonObject.toString())
         val request = Request.Builder()
             .url("http://devapp.artimen.cn:8001/Service/LogService.asmx/uploadStr")
@@ -253,21 +298,25 @@ class MainActivity : AppCompatActivity() {
             try {
                 okHttpClient.newCall(request).execute().use { response ->
                     if (response.isSuccessful) {
-                        Log.e("xulinchao", "successful")
+                        Log.e("xulinchao", "successful body = " + response.body()?.string())
                     } else {
                         Log.e("xulinchao", "failed")
                     }
 
                 }
             } catch (e: Exception) {
-                Log.e("xulinchao",e.printStackTrace().toString())
+                Log.e("xulinchao", e.printStackTrace().toString())
             }
+            Log.e("xulinchao", "$stringBuilder")
+            //继续延迟10min，然后进行发送任务,记得连wifi
+            stringBuilder.clear()
+            handler.sendEmptyMessageDelayed(1, POST_TIME)
         }
-
     }
 
     companion object {
-        val MEDIA_TYPE_MARKDOWN = MediaType.parse("application/json; charset=utf-8");
+        val MEDIA_TYPE_MARKDOWN = MediaType.parse("application/json; charset=utf-8")
+        var POST_TIME = 1 * 60 * 1000L
     }
 
     override fun onDestroy() {

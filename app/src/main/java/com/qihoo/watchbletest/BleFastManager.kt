@@ -48,7 +48,7 @@ object BleFastManager {
 
     fun initBle(app: Application) {
         BleManager.getInstance().init(app)
-        BleManager.getInstance().enableLog(true)
+        BleManager.getInstance().enableLog(false)
         val scanRuleConfig: BleScanRuleConfig =
             BleScanRuleConfig.Builder().setDeviceName(true, macAddress)
                 .setScanTimeOut(5000).build()
